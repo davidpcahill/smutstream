@@ -1,0 +1,1555 @@
+:root {
+  --bg: #0b0b12;
+  --bg-2: #14141e;
+  --card: #1c1c28;
+  --text: #f5f5fa;
+  --muted: #9ca3b5;
+  --accent: #ff3d7f;
+  --accent-2: #7c3aed;
+  --danger: #ef4444;
+  --line: #2a2a3a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, transform 60ms ease;
+}
+button:hover:not(:disabled) {
+  background: #232333;
+  border-color: #3a3a4d;
+}
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+button.danger {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fda4a4;
+}
+button.danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.15);
+}
+button.ghost {
+  background: transparent;
+}
+button.link {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  padding: 0;
+}
+
+input[type="text"],
+input:not([type]),
+input[type="number"] {
+  font: inherit;
+  background: var(--bg-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 12px;
+  min-width: 0;
+}
+input:focus {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 0;
+}
+
+input[type="range"] {
+  width: 100%;
+}
+
+select.select,
+.field select {
+  font: inherit;
+  background: var(--bg-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 12px;
+  width: 100%;
+  min-height: 40px;
+}
+
+/* ---------- app shell ---------- */
+.app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.app--display {
+  background: #000;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: rgba(11, 11, 18, 0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.topbar nav {
+  display: flex;
+  gap: 12px;
+}
+.topbar nav a {
+  color: var(--muted);
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+.topbar nav a:hover {
+  color: var(--text);
+  background: var(--bg-2);
+}
+
+/* ---------- display + slideshow ---------- */
+.display {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  overflow: hidden;
+}
+.stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+/* Layer stack on /display (low → high)
+   0: stage frames (images)
+   1: comments + reactions float layers
+   2: now-playing counters + overlay chip
+   3: music indicators (chip / start)
+   4: fullscreen button (hover) */
+.comments, .reactions { z-index: 1; }
+.likecount, .overlay { z-index: 2; }
+.music-chip, .music-start { z-index: 3; }
+.display__fs { z-index: 4; }
+.stage__frame {
+  position: absolute;
+  inset: 0;
+  will-change: opacity, transform;
+  animation-duration: var(--fade-ms, 1500ms);
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards;
+}
+
+/* cell grid layouts */
+.cells {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  gap: 4px;
+  background: #000;
+}
+.cells--single { grid-template-columns: 1fr; grid-template-rows: 1fr; gap: 0; }
+.cells--split-v { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
+.cells--split-h { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+
+/* diagonal split: two triangles meeting at the main diagonal. Both cells are
+   positioned absolutely on top of one another, each clipped to a triangle. */
+.cells--diag {
+  display: block;
+  gap: 0;
+  position: relative;
+}
+.cells--diag .cells__cell {
+  position: absolute;
+  inset: 0;
+}
+/* upper-left triangle (first post) */
+.cells--diag .cells__cell:nth-child(1) {
+  clip-path: polygon(-1px -1px, calc(100% + 1px) -1px, -1px calc(100% + 1px));
+}
+/* lower-right triangle (second post) — overlap by 1px so the diagonal seam
+   doesn't show a hairline of background. */
+.cells--diag .cells__cell:nth-child(2) {
+  clip-path: polygon(calc(100% + 1px) -1px, calc(100% + 1px) calc(100% + 1px), -1px calc(100% + 1px));
+}
+
+.cells__cell {
+  background-color: #000;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+/* multiplex cells: cover so they fill the half/triangle — accept some crop in
+   exchange for a fuller split. single still uses contain to avoid cutting. */
+.cells--split-v .cells__cell,
+.cells--split-h .cells__cell,
+.cells--diag .cells__cell {
+  background-size: cover;
+}
+
+/* ---------- layout preview tiles (in settings) ---------- */
+.layoutpreview {
+  display: inline-block;
+  width: 36px;
+  height: 26px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #2a2a3a;
+  position: relative;
+  flex: 0 0 auto;
+}
+.layoutpreview > span {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+.layoutpreview--single > span:nth-child(1) {
+  background: linear-gradient(135deg, #7c3aed, #ff3d7f);
+}
+.layoutpreview--single > span:nth-child(2) { display: none; }
+.layoutpreview--split-v > span:nth-child(1) {
+  inset: 0 50% 0 0; background: linear-gradient(135deg, #7c3aed, #ff3d7f);
+}
+.layoutpreview--split-v > span:nth-child(2) {
+  inset: 0 0 0 50%; background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+}
+.layoutpreview--split-h > span:nth-child(1) {
+  inset: 0 0 50% 0; background: linear-gradient(135deg, #7c3aed, #ff3d7f);
+}
+.layoutpreview--split-h > span:nth-child(2) {
+  inset: 50% 0 0 0; background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+}
+.layoutpreview--diag > span:nth-child(1) {
+  background: linear-gradient(135deg, #7c3aed, #ff3d7f);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+.layoutpreview--diag > span:nth-child(2) {
+  background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+
+/* Tag-style pills get a small extra gap when they include a preview tile. */
+.check--withpreview { gap: 8px; }
+
+/* ---- transitions (applied to the whole frame) ---- */
+.stage__frame--fade.stage__frame--incoming { animation-name: ss-fade-in; }
+.stage__frame--fade.stage__frame--outgoing { animation-name: ss-fade-out; }
+
+.stage__frame--fade-black.stage__frame--incoming {
+  animation-name: ss-fade-black-in;
+  animation-timing-function: ease-in;
+}
+.stage__frame--fade-black.stage__frame--outgoing {
+  animation-name: ss-fade-black-out;
+  animation-timing-function: ease-out;
+}
+
+.stage__frame--slide.stage__frame--incoming { animation-name: ss-slide-in; }
+.stage__frame--slide.stage__frame--outgoing { animation-name: ss-slide-out; }
+
+.stage__frame--zoom.stage__frame--incoming { animation-name: ss-zoom-in; }
+.stage__frame--zoom.stage__frame--outgoing { animation-name: ss-zoom-out; }
+
+@keyframes ss-fade-in   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ss-fade-out  { from { opacity: 1; } to { opacity: 0; } }
+
+@keyframes ss-fade-black-in {
+  0%   { opacity: 0; }
+  50%  { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes ss-fade-black-out {
+  0%   { opacity: 1; }
+  50%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+@keyframes ss-slide-in {
+  from { opacity: 1; transform: translateX(100%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes ss-slide-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 1; transform: translateX(-100%); }
+}
+
+@keyframes ss-zoom-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes ss-zoom-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(1.08); }
+}
+.stage__empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  text-align: center;
+  padding: 32px;
+}
+.display__fs {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 18px;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+.display:hover .display__fs {
+  opacity: 1;
+}
+
+/* ---------- overlay / lower-third ---------- */
+.overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* per-instance overrides set via inline style */
+  --ov-opacity: 0.85;
+  --ov-scale: 1;
+}
+
+/* corner placement for chip variants
+   - 14px tucks against the corner on a monitor while staying clear of typical
+     TV/projector overscan (TVs commonly chop ~3% off each edge ≈ 30-50px on
+     1080p; if you see clipping at 14px your TV has aggressive overscan that
+     needs to be turned off in its picture settings).
+   - env(safe-area-inset-*) respects iOS notch / android cutouts when /display
+     is opened on a phone. */
+.overlay--corner-tl .overlay__chip {
+  top: max(env(safe-area-inset-top, 0px), 14px);
+  bottom: auto;
+  left: max(env(safe-area-inset-left, 0px), 14px);
+  right: auto;
+  transform-origin: top left;
+}
+.overlay--corner-tr .overlay__chip {
+  top: max(env(safe-area-inset-top, 0px), 14px);
+  bottom: auto;
+  right: max(env(safe-area-inset-right, 0px), 14px);
+  left: auto;
+  transform-origin: top right;
+}
+.overlay--corner-bl .overlay__chip {
+  bottom: max(env(safe-area-inset-bottom, 0px), 14px);
+  top: auto;
+  left: max(env(safe-area-inset-left, 0px), 14px);
+  right: auto;
+  transform-origin: bottom left;
+}
+.overlay--corner-br .overlay__chip {
+  bottom: max(env(safe-area-inset-bottom, 0px), 14px);
+  top: auto;
+  right: max(env(safe-area-inset-right, 0px), 14px);
+  left: auto;
+  transform-origin: bottom right;
+}
+
+/* --- minimal / qr-only: tiny corner chip --- */
+.overlay__chip {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Extra right padding so the URL text doesn't kiss the chip edge. */
+  padding: 8px 16px 8px 8px;
+  background: rgba(15, 15, 22, calc(0.7 * var(--ov-opacity)));
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, calc(0.1 * var(--ov-opacity)));
+  border-radius: 12px;
+  color: #fff;
+  opacity: 0;
+  transform: translateY(10px) scale(var(--ov-scale));
+  transition: opacity 500ms ease, transform 500ms ease;
+}
+.overlay--on .overlay__chip {
+  opacity: var(--ov-opacity);
+  transform: translateY(0) scale(var(--ov-scale));
+}
+.overlay__chip img {
+  width: 56px;
+  height: 56px;
+  background: #fff;
+  padding: 4px;
+  border-radius: 8px;
+}
+/* qr-only variant: just the QR, no padding/text. Slightly bigger so it
+   stays scannable from across the room. */
+.overlay__chip--qr {
+  padding: 8px;
+  gap: 0;
+}
+.overlay__chip--qr img { width: 104px; height: 104px; }
+.overlay__chip-url {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.overlay__chip-ssid {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* --- normal/verbose: lower-third card --- */
+.overlay--normal,
+.overlay--verbose {
+  transform: translateY(110%);
+  transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  top: auto;
+  inset-inline: 0;
+  bottom: 0;
+}
+.overlay--normal.overlay--on,
+.overlay--verbose.overlay--on {
+  transform: translateY(0);
+}
+.overlay__inner {
+  margin: 0 24px 24px;
+  padding: 18px 22px;
+  background: rgba(15, 15, 22, calc(0.82 * var(--ov-opacity)));
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, calc(0.1 * var(--ov-opacity)));
+  border-radius: 18px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 24px;
+  align-items: center;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  opacity: var(--ov-opacity);
+  transform: scale(var(--ov-scale));
+  transform-origin: bottom center;
+}
+.overlay__brand {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.overlay__title {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+.overlay__sub {
+  margin-top: 4px;
+  opacity: 0.85;
+  font-size: 14px;
+}
+.overlay__lan {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-self: end;
+}
+.overlay__qr {
+  width: 88px;
+  height: 88px;
+  background: #fff;
+  padding: 6px;
+  border-radius: 10px;
+}
+.overlay__url {
+  font-size: 22px;
+  font-weight: 700;
+}
+.overlay__ssid {
+  margin-top: 2px;
+  opacity: 0.9;
+  font-size: 14px;
+}
+.overlay__host {
+  opacity: 0.7;
+  font-size: 13px;
+}
+.overlay__ips {
+  opacity: 0.6;
+  font-size: 12px;
+}
+.overlay__nowplaying {
+  text-align: right;
+}
+.overlay__np-label {
+  font-size: 11px;
+  opacity: 0.75;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.overlay__np-group {
+  font-size: 18px;
+  font-weight: 700;
+}
+.overlay__np-artists,
+.overlay__np-by {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+@media (max-width: 720px) {
+  .overlay__inner {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+  .overlay__lan,
+  .overlay__brand {
+    justify-self: center;
+  }
+  .overlay__nowplaying {
+    text-align: center;
+  }
+}
+
+/* ---------- control / search ---------- */
+.control,
+.search {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+}
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.card__head h2 {
+  margin: 0;
+}
+
+.button {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border: none;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.muted {
+  color: var(--muted);
+}
+.error {
+  color: #fda4a4;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.field > span {
+  font-size: 13px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.field small {
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.field input {
+  width: 100%;
+}
+
+.name-prompt p {
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+.who {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* now playing card */
+.nowcard {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 14px;
+  align-items: center;
+}
+.nowcard__thumb {
+  width: 110px;
+  height: 110px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+}
+.nowcard__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.nowcard__label {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.nowcard__artists {
+  margin-top: 2px;
+  font-size: 14px;
+}
+.nowcard__actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* group cards */
+.groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.group {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+.group--off {
+  opacity: 0.55;
+}
+.group__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.group__name {
+  font-weight: 600;
+}
+.group__meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+.group__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0;
+}
+.group__actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.group__actions button,
+.group__actions .group__downloadall {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.group__downloadall {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+}
+.group__downloadall:hover { background: #232333; }
+.group__contribs {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.group__contribs ul {
+  margin: 6px 0 0 0;
+  padding-left: 18px;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.check {
+  /* Use block flex (not inline-flex) so the pill always lays out predictably
+     inside grid cells and on iOS Safari (where inline-flex + a native
+     checkbox can collapse the text span to zero width). */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.25;
+  color: var(--text);
+  cursor: pointer;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  min-height: 44px;
+}
+.check > input[type="checkbox"] {
+  -webkit-appearance: checkbox;
+  appearance: auto;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: var(--accent);
+}
+.check > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.25;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.check--standalone {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+/* chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #2a2a3a;
+  font-size: 12px;
+}
+.chip--sm {
+  font-size: 11px;
+  padding: 2px 6px;
+}
+.chip--neg {
+  background: #3a2424;
+  color: #fda4a4;
+}
+.chip button {
+  background: transparent;
+  border: none;
+  color: inherit;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* taginput */
+.taginput {
+  position: relative;
+}
+.taginput__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  min-height: 44px;
+}
+.taginput__chips input {
+  flex: 1;
+  min-width: 120px;
+  background: transparent;
+  border: none;
+  padding: 4px 6px;
+}
+.taginput__chips input:focus {
+  outline: none;
+}
+.taginput__suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  list-style: none;
+  padding: 4px;
+  z-index: 10;
+  max-height: 260px;
+  overflow: auto;
+}
+.taginput__suggestions button {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 8px 10px;
+  border-radius: 6px;
+  text-align: left;
+  cursor: pointer;
+}
+.taginput__suggestions button:hover,
+.taginput__suggestions li.on > button {
+  background: var(--bg-2);
+}
+.taginput__suggestions li.on > button {
+  outline: 1px solid var(--accent-2);
+}
+.taginput__suggestions .count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* up next list */
+.upnext {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+}
+.upnext li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+}
+.upnext img {
+  width: 120px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #000;
+}
+.upnext__group {
+  font-size: 13px;
+}
+.upnext__artist {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* search preview grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.thumb {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--line);
+}
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.thumb__actions {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0));
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.thumb:hover .thumb__actions,
+.thumb:focus-within .thumb__actions {
+  opacity: 1;
+}
+.thumb__actions button,
+.thumb__actions a {
+  flex: 0 0 auto;
+  background: rgba(15, 15, 22, 0.85);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.thumb__actions a.thumb__open {
+  margin-left: auto;
+}
+.thumb__actions button:hover:not(:disabled),
+.thumb__actions a:hover {
+  background: rgba(40, 40, 56, 0.95);
+}
+
+/* touch devices: actions are persistently shown */
+@media (hover: none) {
+  .thumb__actions { opacity: 1; }
+}
+
+/* settings segmented buttons */
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+  width: 100%;
+  max-width: 420px;
+}
+.segmented button {
+  background: transparent;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  /* Grow to fill row, but allow wrapping to a new row when too narrow. */
+  flex: 1 1 70px;
+  min-width: 70px;
+  min-height: 36px;
+  white-space: nowrap;
+}
+.segmented button.on {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.segmented button:hover:not(.on) {
+  color: var(--text);
+}
+
+button.small {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.divider {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 14px 0;
+}
+
+.status {
+  color: #a7f3d0;
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+.field small { margin-top: 4px; }
+
+/* ---------- live reactions ---------- */
+.reactions {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.reactions__float {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+  animation: react-float 3000ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+  --drift: 0px;
+  --scale: 1;
+}
+.reactions__emoji {
+  font-size: calc(40px * var(--scale));
+  line-height: 1;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4));
+}
+.reactions__name {
+  font-size: 11px;
+  opacity: 0.85;
+  background: rgba(15, 15, 22, 0.55);
+  padding: 1px 6px;
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+}
+@keyframes react-float {
+  0%   { opacity: 0; transform: translate(0, 0) scale(calc(var(--scale) * 0.7)); }
+  18%  { opacity: 1; transform: translate(calc(var(--drift) * 0.2), -40px) scale(var(--scale)); }
+  80%  { opacity: 0.9; transform: translate(calc(var(--drift) * 0.85), -260px) scale(var(--scale)); }
+  100% { opacity: 0;   transform: translate(var(--drift),                  -340px) scale(var(--scale)); }
+}
+
+.likecount {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(15, 15, 22, 0.55);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.likecount span { color: #ff5e8a; }
+.likecount--pulse { animation: like-pulse 600ms ease-out; }
+@keyframes like-pulse {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
+
+/* ---------- reaction confetti burst ---------- */
+.confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 35;
+}
+.confetti__piece {
+  position: absolute;
+  top: -10vh;
+  line-height: 1;
+  animation-name: confetti-fall;
+  animation-timing-function: cubic-bezier(0.25, 0.6, 0.35, 1);
+  animation-fill-mode: forwards;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.45));
+  will-change: transform, opacity;
+}
+@keyframes confetti-fall {
+  0%   { transform: translate(0, 0)   rotate(0deg); opacity: 0; }
+  10%  { opacity: 1; }
+  100% { transform: translate(var(--drift, 0px), 115vh) rotate(540deg); opacity: 0.95; }
+}
+
+/* ---------- live comments ----------
+   Anchored to the bottom-right band so they stay out of the center of the
+   image. Random vertical scatter within the bottom ~30% + slight horizontal
+   scatter near the right edge keeps multiple bubbles from perfectly overlapping
+   without trampling the middle of the slideshow. */
+.comments {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.bubble {
+  position: absolute;
+  /* `bottom` and `right` are set inline per-bubble */
+  max-width: min(360px, 38%);
+  padding: 10px 14px;
+  background: rgba(15, 15, 22, 0.78);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.35;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  transform: rotate(var(--rot, 0deg)) scale(0.85) translateX(20px);
+  opacity: 0;
+  animation: bubble-pop 7500ms ease forwards;
+  --rot: 0deg;
+}
+.bubble--replay { background: rgba(124, 58, 237, 0.55); }
+.bubble__text { word-break: break-word; overflow-wrap: anywhere; }
+.bubble__name {
+  margin-top: 4px;
+  font-size: 11px;
+  opacity: 0.7;
+  letter-spacing: 0.02em;
+}
+@keyframes bubble-pop {
+  0%   { opacity: 0; transform: rotate(var(--rot)) scale(0.7)  translateX(20px); }
+  8%   { opacity: 1; transform: rotate(var(--rot)) scale(1)    translateX(0); }
+  90%  { opacity: 1; transform: rotate(var(--rot)) scale(1)    translateX(0); }
+  100% { opacity: 0; transform: rotate(var(--rot)) scale(0.95) translateX(20px); }
+}
+
+/* ---------- quick-add metatag buttons ---------- */
+.quickadd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.quickadd__btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  background: var(--bg-2);
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.quickadd__btn:hover {
+  background: #232333;
+  border-color: #3a3a4d;
+}
+.quickadd__btn.on {
+  background: rgba(124, 58, 237, 0.25);
+  border-style: solid;
+  border-color: var(--accent-2);
+  color: #fff;
+}
+
+/* ---------- post actions (reusable row) ---------- */
+.postactions {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.postactions button,
+.postactions a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+  min-height: 36px;
+  white-space: nowrap;
+}
+.postactions__icon { line-height: 1; font-size: 15px; }
+.postactions__label { line-height: 1; }
+.postactions button:hover:not(:disabled),
+.postactions a:hover { background: #232333; }
+.postactions button.on { background: var(--accent-2); border-color: var(--accent-2); color: #fff; }
+.postactions__flash { font-size: 12px; color: #a7f3d0; margin-left: 4px; overflow-wrap: anywhere; }
+.postactions__commentrow {
+  flex: 1 1 100%;
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.postactions__commentrow input { flex: 1; min-width: 0; }
+.postactions--compact button,
+.postactions--compact a {
+  padding: 6px 8px;
+  font-size: 14px;
+  line-height: 1;
+  gap: 0;
+}
+
+/* ---------- recently shown ---------- */
+.recent__strip {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.recent__strip li {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 110px;
+}
+.recent__thumb {
+  width: 110px;
+  height: 80px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+  cursor: pointer;
+}
+.recent__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.recent__strip li.on .recent__thumb {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255, 61, 127, 0.35);
+}
+.recent__caption {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recent__panel {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.recent__panel-meta {
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+/* group edit name input */
+.group__nameedit {
+  width: 100%;
+  font-weight: 600;
+  font-size: 15px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.group__edit { margin-top: 6px; }
+
+/* ---------- music player on display ---------- */
+.music-chip {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(15, 15, 22, 0.55);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 12px;
+  pointer-events: none;
+  opacity: 0.55;
+}
+.music-chip span { color: #ff7da3; }
+
+/* Stays out of the way: same place + size class as the "now playing" chip,
+   just with a gentle pulse and pinker accent so it reads as a tap target. */
+.music-start {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(15, 15, 22, 0.78);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 61, 127, 0.45);
+  border-radius: 999px;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  z-index: 50;
+  animation: music-start-pulse 2.6s ease-in-out infinite;
+}
+.music-start:hover { background: rgba(40, 40, 56, 0.9); }
+.music-start > span { color: #ff7da3; font-size: 14px; line-height: 1; }
+.music-start strong { font-size: 12px; font-weight: 600; display: block; }
+.music-start div { display: flex; flex-direction: column; }
+.music-start div div { font-size: 10px; opacity: 0.6; margin-top: 1px; }
+@keyframes music-start-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 61, 127, 0.0); }
+  50%      { box-shadow: 0 0 0 5px rgba(255, 61, 127, 0.22); }
+}
+
+/* ---------- reaction picker ---------- */
+.reactionpicker {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+  gap: 6px;
+}
+.reactionpicker__btn {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 22px;
+  line-height: 1;
+  padding: 8px;
+  cursor: pointer;
+  transition: transform 80ms ease, background 120ms ease;
+}
+.reactionpicker__btn:hover { background: #232333; }
+.reactionpicker__btn:active { transform: scale(0.92); }
+.reactionpicker__btn.just-sent {
+  animation: reaction-sent 600ms ease-out;
+}
+@keyframes reaction-sent {
+  0%   { transform: scale(1); background: rgba(255, 61, 127, 0.35); }
+  60%  { transform: scale(1.25); background: rgba(255, 61, 127, 0.55); }
+  100% { transform: scale(1); background: var(--bg-2); }
+}
+
+/* ---------- quick music card on /control ---------- */
+.musiccard__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.musiccard__np { flex: 1 1 auto; min-width: 0; }
+.musiccard__label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.musiccard__name {
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.musiccard__blurb {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.musiccard__controls {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.musiccard__controls button {
+  width: 44px;
+  height: 40px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+}
+.musiccard__controls button.on {
+  border-color: var(--accent);
+  color: #ff7da3;
+}
+.musiccard__volume {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.musiccard__volume > span {
+  font-size: 12px;
+  color: var(--muted);
+  flex: 0 0 70px;
+}
+.musiccard__volume input { flex: 1 1 auto; }
+
+/* ---------- paused badges ---------- */
+.display__pausedbadge {
+  position: absolute;
+  top: max(env(safe-area-inset-top, 0px), 14px);
+  right: max(env(safe-area-inset-right, 0px), 60px); /* leave room for fullscreen btn */
+  padding: 6px 12px;
+  background: rgba(15, 15, 22, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 13px;
+  pointer-events: none;
+  z-index: 40;
+}
+.nowcard__thumb { position: relative; }
+.nowcard__pausedbadge {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  border-radius: 12px;
+}
+
+.blocklist__posts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.blocklist__posts li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+.blocklist__posts li button { padding: 0; font-size: 12px; }
+
+/* ---------- mobile polish ---------- */
+@media (max-width: 540px) {
+  .control,
+  .search {
+    padding: 12px;
+    gap: 12px;
+  }
+  .card { padding: 14px; }
+
+  /* transition / layout pills: 2-up grid, each pill stretches */
+  .checks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .check {
+    justify-content: flex-start;
+    padding: 10px 12px;
+    font-size: 14px;
+    min-height: 44px;    /* fat-finger friendly */
+  }
+
+  /* segmented: take full width; allow wrap when labels are too many to fit */
+  .segmented {
+    max-width: none;
+  }
+  .segmented button {
+    font-size: 14px;
+    padding: 10px 8px;
+    flex: 1 1 60px;
+    min-width: 60px;
+  }
+
+  /* PostActions: icon-only on mobile to fit ~5 buttons cleanly */
+  .postactions__label { display: none; }
+  .postactions button,
+  .postactions a {
+    padding: 8px 10px;
+    font-size: 16px;
+    min-width: 44px;
+    justify-content: center;
+  }
+
+  /* now-playing card stacks vertically */
+  .nowcard {
+    grid-template-columns: 80px 1fr;
+  }
+  .nowcard__thumb {
+    width: 80px;
+    height: 80px;
+  }
+
+  /* search action row: each button stretches */
+  .search .card > .row button { flex: 1; }
+
+  /* preview grid still readable on phones */
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+
+  /* recent strip thumbs slightly smaller on mobile */
+  .recent__strip li,
+  .recent__thumb { width: 96px; }
+  .recent__thumb { height: 70px; }
+
+  .topbar nav { gap: 6px; }
+  .topbar nav a { padding: 4px 6px; font-size: 13px; }
+
+  /* reaction picker: more rows of slightly bigger taps */
+  .reactionpicker {
+    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  }
+  .reactionpicker__btn { font-size: 24px; padding: 10px 6px; }
+
+  /* music card: stack vertically when cramped */
+  .musiccard__row { flex-wrap: wrap; }
+  .musiccard__controls { width: 100%; justify-content: space-between; }
+  .musiccard__controls button { flex: 1; }
+}
