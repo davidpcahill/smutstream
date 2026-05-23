@@ -10,6 +10,7 @@ import { attachSockets } from "./sockets.js";
 import { scheduler } from "./scheduler.js";
 import { startCacheSweeper } from "./cache.js";
 import { getLanInfo } from "./lan.js";
+import { syncTelegramPoller } from "./telegram.js";
 
 const app = express();
 app.use(express.json({ limit: "256kb" }));
@@ -30,6 +31,7 @@ const server = http.createServer(app);
 attachSockets(server);
 scheduler.start();
 startCacheSweeper();
+syncTelegramPoller();
 
 server.listen(config.port, config.bindHost, () => {
   const lan = getLanInfo();

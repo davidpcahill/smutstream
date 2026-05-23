@@ -18,6 +18,7 @@ import { setName } from "./identity.js";
 import { getLanInfo, getSsid } from "./lan.js";
 import { scheduler } from "./scheduler.js";
 import { broadcastSettings, broadcastReaction, broadcastComment } from "./sockets.js";
+import { maybeAnnounceMilestone, syncTelegramPoller } from "./telegram.js";
 import { config } from "./config.js";
 import { getSettings, getSettingsForClient, updateSettings, resetSettings, ALL_TRANSITIONS } from "./settings.js";
 
@@ -292,6 +293,14 @@ router.post("/api/votes", (req, res) => {
       at: Date.now(),
     });
   }
+  // Milestone hook: if the now-playing image just crossed the threshold,
+  // Telegram may want to announce it (only in onMilestone mode).
+  if (kind === "up") {
+    const current = scheduler.state().current;
+    if (current && current.id === postId) {
+      maybeAnnounceMilestone(current, Number(tally.up ?? 0));
+    }
+  }
   res.json({ ok: true, tally });
 });
 
@@ -430,6 +439,7 @@ router.patch("/api/settings", (req, res) => {
   updateSettings((req.body ?? {}) as Parameters<typeof updateSettings>[0]);
   scheduler.notifySettingsChanged();
   broadcastSettings();
+  syncTelegramPoller(); // pick up token/enable/commands changes
   res.json({ settings: getSettingsForClient() });
 });
 

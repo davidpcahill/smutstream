@@ -537,7 +537,7 @@ export function SettingsCard() {
             />
           </label>
           <label className="field">
-            <span>chat id (your DM with the bot, or a group's id)</span>
+            <span>chat id (your DM with the bot, or a group's id; bot must be in the group)</span>
             <input
               type="text"
               value={settings.telegramChatId}
@@ -545,8 +545,59 @@ export function SettingsCard() {
               onChange={(e) => patch({ telegramChatId: e.target.value })}
             />
           </label>
+
+          <div className="field">
+            <span>announce mode (when to push images to the chat)</span>
+            <div className="segmented">
+              {[
+                { v: "off", l: "off" },
+                { v: "everyImage", l: "every image" },
+                { v: "onMilestone", l: "on milestone" },
+              ].map((m) => (
+                <button
+                  key={m.v}
+                  type="button"
+                  className={settings.telegramAnnounceMode === m.v ? "on" : ""}
+                  onClick={() => patch({ telegramAnnounceMode: m.v as "off" | "everyImage" | "onMilestone" })}
+                  title={m.v === "everyImage" ? "noisy — posts every slide" : m.v === "onMilestone" ? "posts only when an image gets enough likes" : "no auto-posts; bot is for /commands only"}
+                >
+                  {m.l}
+                </button>
+              ))}
+            </div>
+            <small className="muted">
+              default is <strong>off</strong> — the bot is most useful as a control surface, not a feed.
+              Use <code>/now</code> in chat to pull the current image on demand.
+            </small>
+          </div>
+
+          {settings.telegramAnnounceMode === "onMilestone" && (
+            <label className="field">
+              <span>
+                milestone threshold: <strong>{settings.telegramMilestoneLikes}</strong> 👍
+              </span>
+              <input
+                type="range"
+                min={2}
+                max={50}
+                step={1}
+                value={settings.telegramMilestoneLikes}
+                onChange={(e) => patch({ telegramMilestoneLikes: Number(e.target.value) })}
+              />
+            </label>
+          )}
+
+          <label className="check" style={{ marginBottom: 8 }}>
+            <input
+              type="checkbox"
+              checked={settings.telegramCommandsEnabled}
+              onChange={(e) => patch({ telegramCommandsEnabled: e.target.checked })}
+            />
+            <span>accept /commands from chat — /now, /skip, /pause, /vote, /react, /comment, /add, /play, /music, /help, etc.</span>
+          </label>
+
           <small className="muted">
-            send any message to your bot once first so it's allowed to message you. Throttled to one post per ~8s on the server.
+            send any message to your bot once first so it's allowed to message you. Only commands from the chat id above are honored.
           </small>
         </>
       )}

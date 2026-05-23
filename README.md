@@ -182,7 +182,15 @@ Your tag groups, votes, comments, and adjusted settings live in `data/` and surv
 - **Safety blacklist** in `.env` is prepended to every search server-side; the runtime blocklist is layered on top.
 
 ### Optional integrations
-- **✈️ Telegram now-playing** — point a Telegram bot at any chat/channel and the server posts each new image with a caption (group, artists, contributor, source link). Throttled to one message per ~8s. Bot token is masked in every client-facing response so it never lands in a guest's browser.
+- **✈️ Telegram bot** — point a Telegram bot at any chat/channel for **two-way** control:
+  - **announce mode** — `off` (default — bot is for commands, not spam), `everyImage` (post every advance, throttled to 1/8s), or `onMilestone` (post only when an image hits N 👍 likes).
+  - **commands** (long-polled, chat-scoped to the configured chat id):
+    `/now` `/skip` `/pause` `/resume` `/pop` `/likes`
+    `/groups` `/tags <id>` `/add <name> | <tags>` `/play <id> [now|next]` `/enable <id>` `/disable <id>` `/remove <id>`
+    `/vote up|down` `/react <emoji>` `/comment <text>`
+    `/music` `/music on|off` `/music <stationKey>`
+    `/help`
+  - Bot token is masked in every client-facing response so it never lands in a guest's browser.
 
 ### Overlay (LAN info)
 - **Four verbosity levels**: qr-only (just the QR), minimal (QR + URL), normal (+ Wi-Fi name), verbose (+ hostname, alt IPs, now-showing).
@@ -245,6 +253,9 @@ All settings persist to SQLite (`./data/smutstream.sqlite`). The control-panel U
 | `telegramEnabled` | bool | false |
 | `telegramBotToken` | string (server-side only — masked to `•••••` in responses) | "" |
 | `telegramChatId` | string | "" |
+| `telegramAnnounceMode` | `off` / `everyImage` / `onMilestone` | `off` |
+| `telegramCommandsEnabled` | bool | true |
+| `telegramMilestoneLikes` | 2–50 | 5 |
 | `reactionConfettiEnabled` | bool | true |
 | `reactionConfettiThreshold` | 2–50 | 5 |
 | `reactionConfettiWindowMs` | 3000–120000 | 15000 |

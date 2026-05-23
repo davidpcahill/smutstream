@@ -7,6 +7,7 @@ export type OverlayVerbosity = "qr-only" | "minimal" | "normal" | "verbose";
 export type OverlayCorner = "tl" | "tr" | "bl" | "br";
 export type LayoutKind = "single" | "split-v" | "split-h" | "diag";
 export type CommentsMode = "off" | "immediate" | "replay" | "both";
+export type TelegramAnnounceMode = "off" | "everyImage" | "onMilestone";
 
 export const ALL_TRANSITIONS: TransitionKind[] = ["fade", "fade-black", "slide", "zoom"];
 export const ALL_OVERLAY_MODES: OverlayMode[] = ["off", "occasional", "always"];
@@ -14,6 +15,7 @@ export const ALL_OVERLAY_VERBOSITIES: OverlayVerbosity[] = ["qr-only", "minimal"
 export const ALL_OVERLAY_CORNERS: OverlayCorner[] = ["tl", "tr", "bl", "br"];
 export const ALL_LAYOUTS: LayoutKind[] = ["single", "split-v", "split-h", "diag"];
 export const ALL_COMMENTS_MODES: CommentsMode[] = ["off", "immediate", "replay", "both"];
+export const ALL_TELEGRAM_ANNOUNCE_MODES: TelegramAnnounceMode[] = ["off", "everyImage", "onMilestone"];
 
 export type AppSettings = {
   slideDurationMs: number;
@@ -38,6 +40,9 @@ export type AppSettings = {
   telegramEnabled: boolean;
   telegramBotToken: string;     // never returned to clients — server-side only
   telegramChatId: string;
+  telegramAnnounceMode: TelegramAnnounceMode;  // default off; chat is for control, not spam
+  telegramCommandsEnabled: boolean;            // listen for /commands from the chat
+  telegramMilestoneLikes: number;              // threshold for onMilestone announce
   reactionConfettiEnabled: boolean;
   reactionConfettiThreshold: number;  // reactions in window
   reactionConfettiWindowMs: number;   // sliding window size
@@ -116,6 +121,13 @@ export function getSettings(): AppSettings {
     telegramEnabled: !!readJson("telegramEnabled", false),
     telegramBotToken: readJson<string>("telegramBotToken", ""),
     telegramChatId: readJson<string>("telegramChatId", ""),
+    telegramAnnounceMode: sanitizeEnum<TelegramAnnounceMode>(
+      readJson<TelegramAnnounceMode>("telegramAnnounceMode", "off"),
+      ALL_TELEGRAM_ANNOUNCE_MODES,
+      "off",
+    ),
+    telegramCommandsEnabled: !!readJson("telegramCommandsEnabled", true),
+    telegramMilestoneLikes: clampNum(readJson("telegramMilestoneLikes", 5), 2, 50),
     reactionConfettiEnabled: !!readJson("reactionConfettiEnabled", true),
     reactionConfettiThreshold: clampNum(readJson("reactionConfettiThreshold", 5), 2, 50),
     reactionConfettiWindowMs: clampNum(readJson("reactionConfettiWindowMs", 15_000), 3_000, 120_000),
@@ -208,6 +220,18 @@ export function updateSettings(patch: Partial<AppSettings>): AppSettings {
   }
   if (patch.telegramChatId !== undefined && typeof patch.telegramChatId === "string") {
     writeJson("telegramChatId", patch.telegramChatId.trim().slice(0, 64));
+  }
+  if (patch.telegramAnnounceMode !== undefined) {
+    writeJson(
+      "telegramAnnounceMode",
+      sanitizeEnum(patch.telegramAnnounceMode, ALL_TELEGRAM_ANNOUNCE_MODES, "off"),
+    );
+  }
+  if (patch.telegramCommandsEnabled !== undefined) {
+    writeJson("telegramCommandsEnabled", !!patch.telegramCommandsEnabled);
+  }
+  if (patch.telegramMilestoneLikes !== undefined) {
+    writeJson("telegramMilestoneLikes", clampNum(patch.telegramMilestoneLikes, 2, 50));
   }
   if (patch.reactionConfettiEnabled !== undefined) {
     writeJson("reactionConfettiEnabled", !!patch.reactionConfettiEnabled);

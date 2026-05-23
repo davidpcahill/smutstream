@@ -61,6 +61,9 @@ export type AppSettings = {
   telegramEnabled: boolean;
   telegramBotToken: string;
   telegramChatId: string;
+  telegramAnnounceMode: "off" | "everyImage" | "onMilestone";
+  telegramCommandsEnabled: boolean;
+  telegramMilestoneLikes: number;
   reactionConfettiEnabled: boolean;
   reactionConfettiThreshold: number;
   reactionConfettiWindowMs: number;
